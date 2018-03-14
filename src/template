@@ -1,0 +1,14 @@
+FC = gfortran
+CC = gcc
+LD = gfortran
+
+LIBS= -Llib -lskit -llapack -lblas 
+FFLAGS =  -g -fopenmp #-ffree-line-length-0 -W -Wall -fbounds-check -pedantic-errors -Wunderflow -O -fbacktrace -ffpe-trap=zero,overflow,underflow
+#Opimizacion
+#FFLAGS = -O3 -fopenmp -ffast-math -funroll-loops
+#ifort:
+#FFLAGS = -check all -warn all,nodec,interfaces -gen_interfaces -traceback -fpe0 -fp-stack-check
+CFLAGS = -g
+LDFLAGS =  $(FFLAGS) $(LIBS)
+LIST = -listing
+
