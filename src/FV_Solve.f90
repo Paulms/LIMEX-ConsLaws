@@ -27,16 +27,12 @@ subroutine solve_1D_diff(problem, time_scheme, algorithm, CFL)
   INTEGER                   :: N, M
   TYPE(CLS1DDiffusionProblem)        :: problem
   CLASS(FVDiff1DAlgorithm)       :: algorithm
-  !Get variables
-  Tend = problem%Tend
-  N = problem%mesh%N
-  M = problem%M
   !Set problem
   algorithm%problem = problem
-  CALL generic_time_integration(problem%uu, time_scheme, algorithm, CFL,Tend, N,M,problem,problem%u0)
+  CALL generic_time_integration(problem%uu, time_scheme, algorithm, CFL, problem,problem%u0)
 END subroutine solve_1D_diff
 
-subroutine generic_time_integration(uu, time_scheme, algorithm, CFL, Tend, N,M,problem,u0)
+subroutine generic_time_integration(uu, time_scheme, algorithm, CFL, problem,u0)
   INTEGER                   :: time_scheme
   INTEGER                   :: N, M, percentage, i, j
   REAL(kind = dp)           :: dx,dt, limit, Tend, CFL
@@ -47,16 +43,16 @@ subroutine generic_time_integration(uu, time_scheme, algorithm, CFL, Tend, N,M,p
   CHARACTER(LEN=32)         :: message
   type(RKTable)             :: rktab
   REAL(kind=dp), allocatable :: ki(:), kjs(:), kjh(:), uold(:), rhs(:,:)
-  REAL(kind=dp), allocatable :: kj(:,:), Cu(:,:), us(:), uh(:)
+  REAL(kind=dp), allocatable :: kj(:,:), us(:), uh(:)
   type(Sparse) A, BB
-
-  !Allocate variables
-  ALLOCATE(ki(N*M), kjs(N*M), kjh(N*M), uold(N*M), rhs(N,M), Cu(N,M))
-  ALLOCATE(us(N*M), uh(N*M))
-  ALLOCATE(Kj(N*M,rktab%order))
+  !read problem data
+  N = problem%mesh%N
+  M = problem%M
+  Tend = problem%Tend
   ! Zero variables
   tiempo1 = 0.0_dp;tiempo2 = 0.0_dp
-  dx = problem%mesh%dx;Kj = 0.0_dp
+  dx = problem%mesh%dx
+  tt = 0.0_dp
   ! Set progress variables
   percentage = 0
   limit = Tend/20.0_dp
@@ -68,6 +64,14 @@ subroutine generic_time_integration(uu, time_scheme, algorithm, CFL, Tend, N,M,p
   tiempo1 = omp_get_wtime( )
   ! get tableau
   CALL get_time_tableau(rktab, time_scheme)
+  !Allocate variables
+  ALLOCATE(ki(N*M), kjs(N*M), kjh(N*M), uold(N*M), rhs(N,M))
+  ALLOCATE(us(N*M), uh(N*M))
+  ALLOCATE(Kj(N*M,rktab%order))
+  ! Zero vectors
+  Kj = 0.0_dp; us = 0.0_dp; uh = 0.0_dp
+  ki = 0.0_dp; kjs = 0.0_dp; kjh = 0.0_dp
+  uold = 0.0_dp; rhs = 0.0_dp
   ! Start loop
   DO WHILE (tt < Tend)
     uold = reshape(transpose(uu), shape(ki))
@@ -91,8 +95,7 @@ subroutine generic_time_integration(uu, time_scheme, algorithm, CFL, Tend, N,M,p
       !Reconstruct flux with comp weno5 see: WENO_Scheme.jl
       rhs = 0.0_dp
       CALL algorithm%update(rhs, transpose(reshape(us,[M,N])), dt)
-      Cu = rhs(2:N+1,:)-rhs(1:N,:)
-      Ki = -(1.0_dp/dx)*reshape(transpose(Cu),shape(Ki)) + (1.0_dp/dx**2) * BB%dot(uh)
+      Ki = -(1.0_dp/dx)*reshape(transpose(rhs),shape(Ki)) + (1.0_dp/dx**2) * BB%dot(uh)
       !Solve linear system
       CALL solve_system(A, Ki, 1)
       Kj(:,i) = Ki
@@ -115,7 +118,7 @@ subroutine generic_time_integration(uu, time_scheme, algorithm, CFL, Tend, N,M,p
   ! End timing and print total time
   tiempo2 = omp_get_wtime( )
   PRINT*,'tiempo de CPU = ',tiempo2-tiempo1
-  DEALLOCATE(kj, ki, kjs, kjh, uold, rhs, Cu, us, uh)
+  DEALLOCATE(kj, ki, kjs, kjh, uold, rhs, us, uh)
 end subroutine generic_time_integration
 
 ! ASSEMBLE CRS Matrices

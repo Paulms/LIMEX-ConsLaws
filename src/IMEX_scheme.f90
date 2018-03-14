@@ -107,7 +107,7 @@ CONTAINS
         hh(N+1,:)=0.0_dp
       end if
       do j = 1,N
-        rhs(j,:) = - 1/dx * (hh(j+1,:)-hh(j,:))
+        rhs(j,:) = (hh(j+1,:)-hh(j,:))
       end do
       DEALLOCATE(uu, hh, fminus, fplus)
   end subroutine update_imex

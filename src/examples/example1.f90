@@ -13,14 +13,14 @@ USE FV_Solve
 IMPLICIT NONE
 PUBLIC example1_run
 PRIVATE
-INTEGER, PARAMETER :: M = 4   !Number of variables
+INTEGER, PARAMETER :: nvars = 4   !Number of variables
 REAL(kind = dp), PARAMETER :: phic = exp(-7.0_dp/exp(1.0_dp))
-REAL(kind = dp), PARAMETER :: Vmax(M) = [60.0,55.0,50.0,45.0]
+REAL(kind = dp), PARAMETER :: Vmax(nvars) = [60.0,55.0,50.0,45.0]
 REAL(kind = dp), PARAMETER :: Lmin = 0.03
 CONTAINS
 subroutine example1_run()
   REAL(kind = dp)           :: Tend
-  INTEGER                   :: N, bdtype
+  INTEGER                   :: N, M, bdtype
   REAL(kind = dp)           :: dx
   REAL(kind = dp)           :: CFL, L
   REAL(kind = dp), ALLOCATABLE    :: xx(:)
@@ -41,7 +41,8 @@ subroutine example1_run()
   L = 10.0
   bdtype = PERIODIC
   !Run numerical schemes
-  N = 20          ! Number of nodes
+  N = 100          ! Number of nodes
+  M = nvars
   CALL setup_mesh(0.0_dp, L, N, M, mesh, uinit, bdtype)
   CALL prob%Initialize(mesh, uinit, M, Tend, Flux, JacF, BB)
   ! Save initial data
@@ -49,14 +50,14 @@ subroutine example1_run()
   ALLOCATE(results(N, M+1), names(M+1))
   names = ['x       ', 'y1      ','y2      ', 'y3      ', 'y4      ']
   results(:,1) = mesh%x
-  results(:,2:5) = uinit(:,1:4)
+  results(:,2:5) = uinit(:,1:nvars)
   CALL save_matrix(results, names, name, 0)
   
   ! Compute solution
   CALL solve(prob, H_CN_222, LIMEX_Alg, CFL)
 
   ! Save solution
-  results(:,2:5) = prob%uu(:,1:4)
+  results(:,2:5) = prob%uu(:,1:nvars)
   name = 'test_1'
   CALL save_matrix(results, names, name, 0)
   
@@ -102,7 +103,7 @@ END SUBROUTINE
 
 function f0(x)
   real(kind = dp), intent(in) :: x
-  real(kind = dp) :: f0(M)
+  real(kind = dp) :: f0(nvars)
   f0 = 0.5_dp*exp(-(x-3)**2)*[0.2,0.3,0.2,0.3]
 end function f0  
 
@@ -140,7 +141,7 @@ function Beta(u)
   INTEGER         :: i
   Beta = 0.0_dp
   if (u > phic ) then
-    Beta = -VP(u)*Lmin*u/M*sum(Vmax)/4
+    Beta = -VP(u)*Lmin*u/nvars*sum(Vmax)/nvars
   end if
 end function Beta
 
